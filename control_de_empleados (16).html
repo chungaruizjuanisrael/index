@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel de Administración</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    .activo {
+      background-color: #e5e7eb;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+  <div class="p-4">
+    <div class="flex space-x-4 mb-4">
+      <button id="btn-dashboard" onclick="mostrarSeccion('dashboard')" class="px-4 py-2 bg-white rounded shadow">Dashboard</button>
+      <button id="btn-empleados" onclick="mostrarSeccion('empleados')" class="px-4 py-2 bg-white rounded shadow">Empleados</button>
+      <button id="btn-asistencias" onclick="mostrarSeccion('asistencias')" class="px-4 py-2 bg-white rounded shadow">Asistencias</button>
+      <button id="btn-listaNegra" onclick="mostrarSeccion('listaNegra')" class="px-4 py-2 bg-white rounded shadow">Lista Negra</button>
+      <button onclick="volverAlEscaner()" class="ml-auto px-4 py-2 bg-red-500 text-white rounded shadow">Volver al Escáner</button>
+    </div>
+
+    <div id="dashboard" class="hidden">
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="font-semibold text-lg">Bienvenido al Panel de Administración</h2>
+        <p class="text-sm mt-2">Desde aquí puede acceder a todas las funciones del sistema.</p>
+      </div>
+    </div>
+
+    <div id="empleados" class="hidden">
+      <div class="mb-4">
+  <input type="text" id="busquedaEmpleado" oninput="filtrarEmpleados()" placeholder="Buscar por ID, DNI o Nombres" class="border px-4 py-2 rounded w-full" />
+</div>
+      <div class="flex justify-between mb-4">
+        <button onclick="agregarEmpleado()" class="bg-green-600 text-white px-4 py-2 rounded">➕ Agregar Empleado</button>
+        <button onclick="exportarEmpleadosExcel()" class="bg-blue-600 text-white px-4 py-2 rounded">📥 Exportar Excel</button>
+       <button onclick="eliminarDefinitivamenteInactivos()" class="bg-red-600 text-white px-4 py-2 rounded">
+  Limpiar Empleados Inactivos
+        </button>
+        <input type="file" id="inputImportarExcel" accept=".xlsx, .xls" class="ml-4">
+        <button onclick="importarEmpleadosExcel()" class="bg-purple-600 text-white px-4 py-2 rounded">📤 Importar Excel</button>
+      </div>
+      <table class="min-w-full bg-white">
+        <thead>
+          <tr>
+            <th class="px-4 py-2">ID</th>
+            <th class="px-4 py-2">DNI</th>
+            <th class="px-4 py-2">Apellidos y Nombres</th>
+            <th class="px-4 py-2">Área</th>
+            <th class="px-4 py-2">Puesto</th>
+            <th class="px-4 py-2">Zona</th>
+            <th class="px-4 py-2">Fecha Registro</th>
+            <th class="px-4 py-2">Estado</th>
+            <th class="px-4 py-2">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="tablaEmpleados">
+        </tbody>
+      </table>
+    </div>
+
+    <div id="asistencias" class="hidden">
+      <div class="bg-white p-6 rounded shadow">
+        <h2 class="text-xl font-semibold mb-4">Registros de Asistencia</h2>
+        <div class="flex space-x-4 mb-4">
+  <input type="date" id="filtroFecha" class="border px-2 py-1 rounded">
+  <select id="filtroTipo" class="border px-2 py-1 rounded">
+    <option value="">Todos los tipos</option>
+    <option>Ingreso a Planta</option>
+    <option>Ingreso a Sala de Proceso</option>
+    <option>Salida de Planta</option>
+    <option>Salida de Sala de Proceso</option>
+    <option>Cena</option>
+    <option>Almuerzo</option>
+    <option>Refrigerio</option>
+  </select>
+  <button onclick="filtrarAsistencias()" class="bg-blue-500 text-white px-4 py-1 rounded">Filtrar</button>
+    <button onclick="exportarAsistenciasExcel()" class="bg-green-600 text-white px-4 py-2 rounded mb-4">📤 Exportar Asistencias</button>
+
+        </div>
+
+        <table class="min-w-full table-auto">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="px-4 py-2">ID</th>
+              <th class="px-4 py-2">Nombre</th>
+              <th class="px-4 py-2">Área</th>
+              <th class="px-4 py-2">Fecha</th>
+              <th class="px-4 py-2">Hora</th>
+              <th class="px-4 py-2">Tipo Registro</th>
+            </tr>
+          </thead>
+          <tbody>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="listaNegra" class="hidden">
+      <div class="bg-white p-4 rounded shadow">
+        <h2 class="font-semibold text-lg">Panel de lista negra</h2>
+        <p class="text-sm">Aquí se muestran empleados bloqueados o sancionados.</p>
+      </div>
+    </div>
+
+    <div id="escaner" class="hidden">
+      <div class="bg-white p-6 rounded shadow space-y-4">
+        <h2 class="text-xl font-bold">Escáner QR</h2>
+        <select id="tipoRegistro" class="w-full border px-4 py-2 rounded bg-gray-50">
+          <option selected disabled>📝 Tipo de Registro</option>
+          <option>Ingreso a Planta</option>
+          <option>Ingreso a Sala de Proceso</option>
+          <option>Salida de Planta</option>
+          <option>Salida de Sala de Proceso</option>
+          <option>Cena</option>
+          <option>Almuerzo</option>
+          <option>Refrigerio</option>
+        </select>
+        <button class="bg-indigo-600 text-white px-4 py-2 rounded">📷 Escanear Código QR</button>
+        <button onclick="mostrarFormularioManualID()" class="bg-yellow-500 text-white px-4 py-2 rounded">✍️ Entrada Manual ID (Opcional)</button>
+        <button class="bg-blue-600 text-white px-4 py-2 rounded">📄 Registros Recientes</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let empleados = []
+    let asistencias = JSON.parse(localStorage.getItem("asistencias")) || [];
+    let nextEmployeeId = parseInt(localStorage.getItem("nextEmployeeId")) || 1000;
+
+    function mostrarSeccion(seccion) {
+  const secciones = ["dashboard", "empleados", "asistencias", "listaNegra", "escaner"];
+  const botones = ["btn-dashboard", "btn-empleados", "btn-asistencias", "btn-listaNegra"];
+  secciones.forEach(id => document.getElementById(id)?.classList.add("hidden"));
+  botones.forEach(id => document.getElementById(id)?.classList.remove("activo"));
+  document.getElementById(seccion)?.classList.remove("hidden");
+  document.getElementById("btn-" + seccion)?.classList.add("activo");
+
+  sessionStorage.setItem("seccionActiva", seccion);  // Guarda la sección activa
+}
+
+    function volverAlEscaner() {
+      mostrarSeccion("escaner");
+    }
+
+    function exportarEmpleadosExcel() {
+  mostrarSeccion('empleados');  // Forzar mostrar empleados antes de exportar
+      if (!empleados || empleados.length === 0) {
+    alert("No hay empleados para exportar.");
+    return;
+  }
+
+  const encabezados = [
+    ["ID", "DNI", "Apellidos y Nombres", "Área", "Puesto", "Zona", "Fecha Registro", "Estado"]
+  ];
+  const datos = empleados.map(e => [
+    e.id,
+    e.dni,
+    e.nombre,
+    e.area,
+    e.puesto,
+    e.zona,
+    e.fecha,
+    e.estado || "Activo"
+  ]);
+
+  const hoja = XLSX.utils.aoa_to_sheet([...encabezados, ...datos]);
+    // Convertir columna de fechas (índice 6 = "Fecha Registro") a formato de fecha
+const rango = XLSX.utils.decode_range(hoja['!ref']);
+for (let R = 1; R <= empleados.length; ++R) {
+  const celda = hoja[XLSX.utils.encode_cell({ r: R, c: 6 })]; // Columna G (6)
+  if (celda && celda.v) {
+    celda.t = 'd'; // Tipo 'date'
+    celda.z = XLSX.SSF._table[14]; // Formato: 'm/d/yy'
+    celda.v = new Date(celda.v); // Convertir a objeto Date
+  }
+}
+  
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, hoja, "Empleados");
+  XLSX.writeFile(libro, "Empleados_Registrados.xlsx");
+}
+
+    function importarEmpleadosExcel() {
+  const input = document.getElementById("inputImportarExcel");
+  const archivo = input.files[0];
+
+  if (!archivo) {
+    alert("Selecciona un archivo Excel.");
+    return;
+  }
+
+  const lector = new FileReader();
+  lector.onload = function (e) {
+    const datos = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(datos, { type: "array" });
+
+    const hoja = workbook.Sheets[workbook.SheetNames[0]];
+    const empleadosImportados = XLSX.utils.sheet_to_json(hoja, { header: 1 });
+
+    // Ignora encabezados, procesa desde la fila 2
+    for (let i = 1; i < empleadosImportados.length; i++) {
+      const fila = empleadosImportados[i];
+      const [id, dni, nombre, area, puesto, zona, fecha, estado] = fila;
+
+      if (!dni || !nombre || empleados.some(e => e.dni === dni)) continue; // Evita duplicados
+
+      empleados.push({
+        id: id?.toString() || String(nextEmployeeId++),
+        dni: dni.toString(),
+        nombre,
+        area,
+        puesto,
+        zona,
+        fecha: fecha || new Date().toISOString().split('T')[0],
+        estado: estado || "Activo"
+      });
+    }
+
+    localStorage.setItem("empleados", JSON.stringify(empleados));
+    localStorage.setItem("nextEmployeeId", nextEmployeeId);
+    cargarEmpleadosEnTabla();
+    alert("Empleados importados correctamente.");
+  };
+
+  lector.readAsArrayBuffer(archivo);
+}
+
+    function eliminarDefinitivamenteInactivos() {
+  if (!confirm("¿Estás seguro de que deseas eliminar permanentemente a los empleados inactivos?")) return;
+
+  empleados = empleados.filter(emp => emp.estado !== "Inactivo");
+  localStorage.setItem("empleados", JSON.stringify(empleados));
+  cargarEmpleadosEnTabla();
+  alert("Empleados inactivos eliminados permanentemente.");
+}
+
+    function agregarEmpleado() {
+  const modal = document.createElement("div");
+  modal.innerHTML = `
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white p-6 rounded shadow-lg w-96 space-y-4">
+        <h3 class="text-lg font-semibold">Agregar Empleado</h3>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" id="usarIdManual" onchange="document.getElementById('campoIdManual').classList.toggle('hidden')">
+          <span>Ingresar ID manual</span>
+        </label>
+        <input id="campoIdManual" type="text" placeholder="ID Manual" class="w-full border p-2 rounded hidden">
+        <input id="nuevoDNI" type="text" placeholder="DNI" class="w-full border p-2 rounded">
+        <input id="nuevoNombre" type="text" placeholder="Apellidos y Nombres" class="w-full border p-2 rounded">
+        <input id="nuevoArea" type="text" placeholder="Área" class="w-full border p-2 rounded">
+        <input id="nuevoPuesto" type="text" placeholder="Puesto" class="w-full border p-2 rounded">
+        <input id="nuevoZona" type="text" placeholder="Zona" class="w-full border p-2 rounded">
+        <div class="flex justify-end space-x-2">
+          <button onclick="this.closest('.fixed')?.remove()" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button>
+          <button onclick="guardarNuevoEmpleado()" class="bg-green-600 text-white px-4 py-2 rounded">Guardar</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+    function guardarNuevoEmpleado() {
+  const dni = document.getElementById("nuevoDNI").value.trim();
+  const dniValido = /^\d{8}$/.test(dni);
+  if (!dniValido) {
+    alert("El DNI debe contener exactamente 8 dígitos numéricos.");
+    return;
+  }
+
+  const nombre = document.getElementById("nuevoNombre").value;
+  const area = document.getElementById("nuevoArea").value;
+  const puesto = document.getElementById("nuevoPuesto").value;
+  const zona = document.getElementById("nuevoZona").value;
+  const fecha = new Date().toISOString().split('T')[0];
+
+  const dniDuplicado = empleados.some(e => e.dni === dni);
+  if (dniDuplicado) {
+    alert(`El DNI ingresado (${dni}) ya está registrado. Por favor verifique los datos.`);
+    return;
+  }
+
+  if (!dni || !nombre || !area || !puesto || !zona) {
+    alert("Todos los campos son obligatorios.");
+    return;
+  }
+const usarIdManual = document.getElementById("usarIdManual")?.checked;
+const idManual = document.getElementById("campoIdManual")?.value.trim();
+
+let idEmpleado = "";
+if (usarIdManual) {
+  if (!idManual || empleados.some(e => e.id === idManual)) {
+    alert("ID manual inválido o duplicado.");
+    return;
+  }
+  idEmpleado = idManual;
+} else {
+  idEmpleado = String(nextEmployeeId++);
+  localStorage.setItem('nextEmployeeId', nextEmployeeId);
+}
+
+  const nuevoEmpleado = { id: idEmpleado, dni, nombre, area, puesto, zona, fecha, estado: "Activo" };
+  empleados.push(nuevoEmpleado);
+  localStorage.setItem("empleados", JSON.stringify(empleados));
+
+  cargarEmpleadosEnTabla();
+  document.querySelector(".fixed")?.remove();
+}
+
+    function cargarEmpleadosEnTabla() {
+  const tbody = document.getElementById("tablaEmpleados");
+
+  tbody.innerHTML = "";
+
+  empleados.forEach(e => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td class="px-4 py-2">${e.id}</td>
+      <td class="px-4 py-2">${e.dni}</td>
+      <td class="px-4 py-2">${e.nombre}</td>
+      <td class="px-4 py-2">${e.area}</td>
+      <td class="px-4 py-2">${e.puesto}</td>
+      <td class="px-4 py-2">${e.zona}</td>
+      <td class="px-4 py-2">${e.fecha}</td>
+      <td class="px-4 py-2">${e.estado || "Activo"}</td>
+      <td class="px-4 py-2 space-x-1"></td>
+    `;
+
+    const accionesTd = tr.querySelector("td:last-child");
+
+    const btnEditar = document.createElement("button");
+btnEditar.textContent = "✏️";
+btnEditar.className = "bg-yellow-400 text-white px-2 py-1 rounded";
+btnEditar.addEventListener("click", () => {
+  console.log("✏️ Editando empleado con ID:", e.id);
+  editarEmpleado(e.id);
+});
+
+const btnEliminar = document.createElement("button");
+btnEliminar.textContent = "🗑️";
+btnEliminar.className = "bg-red-500 text-white px-2 py-1 rounded";
+btnEliminar.addEventListener("click", () => {
+  console.log("🗑️ Eliminando empleado con ID:", e.id);
+  eliminarEmpleado(e.id);
+});
+    accionesTd.appendChild(btnEditar);
+    accionesTd.appendChild(btnEliminar);
+
+    tbody.appendChild(tr);
+  });
+}
+    
+    function cargarAsistenciasEnTabla() {
+  const tbody = document.querySelector("#asistencias tbody");
+  tbody.innerHTML = "";
+
+  asistencias.forEach(a => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+  <td class="px-4 py-2">${a.id}</td>
+  <td class="px-4 py-2">${a.nombre}</td>
+  <td class="px-4 py-2">${a.area || '-'}</td>
+  <td class="px-4 py-2">${a.fecha}</td>
+  <td class="px-4 py-2">${a.hora}</td>
+  <td class="px-4 py-2">${a.tipoRegistro}</td>
+`;
+    tbody.appendChild(tr);
+  });
+}
+
+    function mostrarFormularioManualID() {
+      const tipoRegistro = document.getElementById("tipoRegistro").value;
+      if (!tipoRegistro || tipoRegistro === "📝 Tipo de Registro") {
+        alert("Debe seleccionar un Tipo de Registro antes de registrar manualmente.");
+        return;
+      }
+      const modal = document.createElement("div");
+      modal.innerHTML = `
+        <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div class="bg-white p-6 rounded shadow-lg w-96 space-y-4">
+            <h3 class="text-lg font-semibold">Entrada Manual por ID</h3>
+            <input id="manualId" type="text" placeholder="Ingrese ID del Empleado" class="w-full border p-2 rounded">
+            <div class="flex justify-end space-x-2">
+              <button onclick="this.closest('.fixed')?.remove()" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button>
+              <button onclick="registrarManualID()" class="bg-green-600 text-white px-4 py-2 rounded">Registrar</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    function registrarManualID() {
+      const id = document.getElementById("manualId").value;
+      const tipoRegistro = document.getElementById("tipoRegistro").value;
+      if (!id || !tipoRegistro || tipoRegistro === "📝 Tipo de Registro") {
+        alert("Debe ingresar un ID válido y seleccionar un Tipo de Registro.");
+        return;
+      }
+      const empleado = empleados.find(e => e.id === id);
+      const tbody = document.querySelector("#asistencias tbody");
+      const tr = document.createElement("tr");
+      const now = new Date();
+      const fecha = now.toISOString().split('T')[0];
+      const hora = now.toTimeString().split(' ')[0];
+
+      tr.innerHTML = `
+        <td class="px-4 py-2">${id}</td>
+        <td class="px-4 py-2">${empleado ? empleado.nombre : '<span class="text-red-500">No registrado</span>'}</td>
+        <td class="px-4 py-2">${empleado ? empleado.area : '<span class="text-red-500">-</span>'}</td>
+        <td class="px-4 py-2">${fecha}</td>
+        <td class="px-4 py-2">${hora}</td>
+        <td class="px-4 py-2">${tipoRegistro}</td>
+      `;
+      tbody.appendChild(tr);
+      asistencias.push({
+  id,
+  nombre: empleado ? empleado.nombre : "No registrado",
+  area: empleado ? empleado.area : "-",
+  fecha,
+  hora,
+  tipoRegistro
+});
+localStorage.setItem("asistencias", JSON.stringify(asistencias));
+
+      document.querySelector(".fixed")?.remove();
+    }
+    
+    function filtrarAsistencias() {
+  const fechaFiltro = document.getElementById("filtroFecha").value;
+  const tipoFiltro = document.getElementById("filtroTipo").value;
+  const filas = document.querySelectorAll("#asistencias tbody tr");
+
+  filas.forEach(fila => {
+    const celdas = fila.querySelectorAll("td");
+    const fecha = celdas[2]?.textContent.trim();
+    const tipo = celdas[4]?.textContent.trim();
+
+    const coincideFecha = !fechaFiltro || fecha === fechaFiltro;
+    const coincideTipo = !tipoFiltro || tipo === tipoFiltro;
+
+    fila.style.display = coincideFecha && coincideTipo ? "" : "none";
+  });
+}
+
+    function exportarAsistenciasExcel() {
+  const filas = document.querySelectorAll("#asistencias tbody tr");
+  if (!filas.length) {
+    alert("No hay asistencias para exportar.");
+    return;
+  }
+
+  const data = [["ID", "Nombre", "Fecha", "Hora", "Tipo Registro"]];
+
+  filas.forEach(fila => {
+    const celdas = fila.querySelectorAll("td");
+    const filaData = Array.from(celdas).map(td => td.textContent.trim());
+    if (fila.style.display !== "none") {
+      data.push(filaData);
+    }
+  });
+
+  const hoja = XLSX.utils.aoa_to_sheet(data);
+
+  // Formatear la columna de Fecha (índice 2) como tipo 'date'
+  const rango = XLSX.utils.decode_range(hoja['!ref']);
+  for (let R = 1; R <= filas.length; ++R) {
+    const celda = hoja[XLSX.utils.encode_cell({ r: R, c: 2 })]; // Fecha
+    if (celda && celda.v) {
+      celda.t = 'd';
+      celda.z = XLSX.SSF._table[14]; // 'm/d/yy'
+      celda.v = new Date(celda.v);
+    }
+  }
+
+  const libro = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(libro, hoja, "Asistencias");
+  XLSX.writeFile(libro, "Asistencias_Registradas.xlsx");
+}
+
+    function editarEmpleado(id) {
+  const empleado = empleados.find(e => e.id === id);
+  if (!empleado) return alert("Empleado no encontrado");
+
+  const modal = document.createElement("div");
+  modal.innerHTML = `
+    <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white p-6 rounded shadow-lg w-96 space-y-4">
+        <h3 class="text-lg font-semibold">Editar Empleado</h3>
+        <input id="editarNombre" value="${empleado.nombre}" class="w-full border p-2 rounded">
+        <input id="editarArea" value="${empleado.area}" class="w-full border p-2 rounded">
+        <input id="editarPuesto" value="${empleado.puesto}" class="w-full border p-2 rounded">
+        <input id="editarZona" value="${empleado.zona}" class="w-full border p-2 rounded">
+        <div class="flex justify-end space-x-2">
+          <button onclick="this.closest('.fixed')?.remove()" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button>
+          <button onclick="guardarEdicionEmpleado('${id}')" class="bg-green-600 text-white px-4 py-2 rounded">Guardar</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+}
+
+    function guardarEdicionEmpleado(id) {
+  const nombre = document.getElementById("editarNombre").value;
+  const area = document.getElementById("editarArea").value;
+  const puesto = document.getElementById("editarPuesto").value;
+  const zona = document.getElementById("editarZona").value;
+
+  const empleado = empleados.find(e => e.id === id);
+  if (!empleado) return alert("Empleado no encontrado");
+
+  empleado.nombre = nombre;
+  empleado.area = area;
+  empleado.puesto = puesto;
+  empleado.zona = zona;
+
+  localStorage.setItem("empleados", JSON.stringify(empleados));
+  cargarEmpleadosEnTabla();
+  document.querySelector(".fixed")?.remove();
+}
+
+    function eliminarEmpleado(id) {
+  if (!confirm("¿Estás seguro de marcar como INACTIVO a este empleado?")) return;
+
+  const empleadosAlmacenados = JSON.parse(localStorage.getItem("empleados")) || [];
+  const index = empleadosAlmacenados.findIndex(e => e.id.toString() === id.toString());
+
+  if (index !== -1) {
+    empleadosAlmacenados[index].estado = "Inactivo";
+    console.log("🟡 Estado cambiado a INACTIVO para:", empleadosAlmacenados[index]);
+    localStorage.setItem("empleados", JSON.stringify(empleadosAlmacenados));
+
+    empleados = empleadosAlmacenados; // Refresca la variable global
+    cargarEmpleadosEnTabla();
+  } else {
+    alert("Empleado no encontrado.");
+    console.warn("❌ ID no encontrado:", id);
+  }
+}
+    
+    function filtrarEmpleados() {
+  const texto = document.getElementById("busquedaEmpleado").value.toLowerCase();
+  const filas = document.querySelectorAll("#tablaEmpleados tr");
+
+  filas.forEach(fila => {
+    const columnas = fila.querySelectorAll("td");
+    const id = columnas[0]?.textContent.toLowerCase() || "";
+    const dni = columnas[1]?.textContent.toLowerCase() || "";
+    const nombre = columnas[2]?.textContent.toLowerCase() || "";
+
+    const coincide = id.includes(texto) || dni.includes(texto) || nombre.includes(texto);
+    fila.style.display = coincide ? "" : "none";
+  });
+}
+ 
+window.onload = () => {
+  empleados = JSON.parse(localStorage.getItem("empleados")) || [];
+  cargarEmpleadosEnTabla();
+cargarAsistenciasEnTabla();
+
+  // Si hay empleados, deja abierta la última sección seleccionada, o vuelve al dashboard
+  const ultimaSeccion = sessionStorage.getItem("seccionActiva") || "dashboard";
+  mostrarSeccion(ultimaSeccion);
+};
+  </script>
+</body>
+</html>
