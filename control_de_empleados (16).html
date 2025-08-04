@@ -561,10 +561,11 @@ localStorage.setItem("asistencias", JSON.stringify(asistencias));
 window.onload = () => {
   empleados = JSON.parse(localStorage.getItem("empleados")) || [];
   cargarEmpleadosEnTabla();
-cargarAsistenciasEnTabla();
+  cargarAsistenciasEnTabla();
 
   // Si hay empleados, deja abierta la última sección seleccionada, o vuelve al dashboard
   const ultimaSeccion = sessionStorage.getItem("seccionActiva") || "dashboard";
+  // Mostrar la sección activa previamente guardada
   mostrarSeccion(ultimaSeccion);
 };
   </script>
